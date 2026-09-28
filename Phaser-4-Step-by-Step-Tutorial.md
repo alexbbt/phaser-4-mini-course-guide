@@ -1,75 +1,53 @@
 # Build Your First Game with Phaser 4 — Step-by-Step Tutorial
 
-A written version of the [YouTube mini course](https://www.youtube.com/playlist?list=PLmcXe0-sfoSheQinG8d5JQBiTqiKnBgo7). You’ll build a simple catch game: move a jar left/right, catch falling candies, score points, and lose after three misses.
+A written version of the [YouTube mini course](https://www.youtube.com/playlist?list=PLmcXe0-sfoSheQinG8d5JQBiTqiKnBgo7).
 
-Code matches the official starter: [phaser-4-falling-objects-game](https://github.com/devshareacademy/phaser-4-falling-objects-game). Most edits go in `src/scenes/game-scene.js`. Each step shows **only what to add or change**.
+Each lesson matches an official GitHub tag from [phaser-4-falling-objects-game](https://github.com/devshareacademy/phaser-4-falling-objects-game). Snippets below are **only the new or changed lines** from that step’s diff (file: `src/scenes/game-scene.js` unless noted).
 
----
-
-## Contents
-
-1. [Setup & how Phaser works](#1-setup--how-phaser-works)
-2. [Coordinates, assets & first sprites](#2-coordinates-assets--first-sprites)
-3. [Player movement with the keyboard](#3-player-movement-with-the-keyboard)
-4. [Spawning falling objects](#4-spawning-falling-objects)
-5. [Collision detection (no physics)](#5-collision-detection-no-physics)
-6. [Score & UI text](#6-score--ui-text)
-7. [Misses, game over & restart](#7-misses-game-over--restart)
-8. [Where to go next](#8-where-to-go-next)
-9. [Updating Phaser](#9-updating-phaser)
+| Lesson | Video | GitHub tag |
+|--------|-------|------------|
+| 1 | Project Setup & Core Concepts | `0-initial-project` |
+| 2 | Coordinates & Positioning | `1-images` |
+| 3 | Player Movement | `2-player-movement` |
+| 4 | Spawning Objects | `3-falling-objects` |
+| 5 | Collision Detection | `4-collisions` |
+| 6 | Scoring & UI | `5-score` |
+| 7 | Game Over & Restart | `6-game-over` |
+| 8 | Wrap-up | — |
+| 9 | Updating Phaser | `phaser-ver-4.1.0` |
 
 ---
 
 ## Prerequisites
 
-- A modern browser
-- [VS Code](https://code.visualstudio.com/) (or any editor)
-- A local web server
-- The course starter project unzipped
+- Modern browser + editor (VS Code works well)
+- Course starter at tag `0-initial-project`
+- Local server from the project root (folder with `index.html`)
 
-Open the project folder and start a server from the **project root** (the folder with `index.html`).
-
-**VS Code:** [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) → **Go Live**.
-
-**Python:** `python3 -m http.server 8080` → open `http://localhost:8080/`
-
+**VS Code:** [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) → Go Live  
+**Python:** `python3 -m http.server 8080` → `http://localhost:8080/`  
 **Node:** `npx http-server`
 
-Confirm the canvas loads and the console shows the Phaser banner.
+Confirm the Phaser banner appears in the browser console.
 
----
-
-## Project map
+### Project map
 
 | Path | Role |
 |------|------|
-| `index.html` | Loads Phaser + `src/main.js` |
 | `src/main.js` | Creates `Phaser.Game`, registers scenes |
-| `src/scenes/preload-scene.js` | Loads assets, starts gameplay |
-| `src/scenes/game-scene.js` | All gameplay (edit this) |
-| `src/common/assets.js` | Asset keys and paths |
-| `src/common/scene-keys.js` | Scene name constants |
+| `src/scenes/preload-scene.js` | Loads assets → starts `GameScene` |
+| `src/scenes/game-scene.js` | Gameplay (almost all edits) |
+| `src/common/assets.js` | Asset keys |
 
-Scene lifecycle:
-
-| Method | When | For |
-|--------|------|-----|
-| `init()` | Once per scene start | Reset numbers / flags |
-| `preload()` | Once before create | Load assets |
-| `create()` | Once after load | Build world, UI, input, timers |
-| `update(time, delta)` | Every frame | Movement, input, collisions |
+Scene lifecycle: `init` (reset) → `preload` (load) → `create` (build once) → `update` (every frame).
 
 ---
 
 ## 1. Setup & how Phaser works
 
-### Goal
+**Tag:** `0-initial-project` · **Goal:** Run the starter and understand the loop. No gameplay edits yet.
 
-Understand bootstrap and prove the game loop is alive. You don’t need to rewrite these files — the starter already has them.
-
-### What `main.js` does (read only)
-
-Creates the game and starts preload:
+### Already in `main.js`
 
 ```js
 const game = new Phaser.Game(gameConfig);
@@ -79,9 +57,7 @@ game.scene.add(SCENE_KEYS.GAME_SCENE, GameScene);
 game.scene.start(SCENE_KEYS.PRELOAD_SCENE);
 ```
 
-### What `PreloadScene` does (read only)
-
-Loads images/atlas, then jumps to gameplay:
+### Already in `PreloadScene`
 
 ```js
 preload() {
@@ -98,9 +74,15 @@ create() {
 }
 ```
 
-### Try it: log the loop
+### Starting `GameScene.create()`
 
-In `game-scene.js`, temporarily add:
+```js
+create() {
+  this.add.image(this.scale.width / 2, this.scale.height / 2, ASSET_KEYS.BACKGROUND);
+}
+```
+
+### Try it — temporary logs
 
 ```js
 preload() {
@@ -116,63 +98,48 @@ update() {
 }
 ```
 
-Refresh: `preload` / `create` once, `update` repeatedly. Remove the logs when done.
+You should see `preload` / `create` once and `update` repeatedly. Remove the logs when done.
 
-**Checkpoint:** Server running, Phaser banner visible, you understand preload → create → update.
+**Checkpoint:** Game runs; you know preload → create → update.
 
 ---
 
 ## 2. Coordinates, assets & first sprites
 
-### Goal
+**Tag:** `1-images` · **Goal:** Add jar + candy; clarify X/Y and origin.
 
-Draw the background, jar, and one candy. Understand X/Y and origin.
+World origin is top-left `(0,0)`. X goes right, Y goes down. Object **origin defaults to center**.
 
-### Coordinates (concept)
-
-- World origin is **top-left** `(0, 0)`.
-- **X** → right, **Y** → down.
-- Default object **origin is the center** — `(0, 0)` parks the *center* on the corner.
-
-### In `create()` — get size + draw sprites
+### In `create()` — replace body with
 
 ```js
 const { width, height } = this.scale;
 
 this.add.image(width / 2, height / 2, ASSET_KEYS.BACKGROUND);
 this.add.image(width / 2, height, ASSET_KEYS.JAR);
-this.add
-  .image(width / 2, height / 2, ASSET_KEYS.OBJECTS, 'button1.png')
-  .setScale(0.75);
+this.add.image(width / 2, height / 2, ASSET_KEYS.OBJECTS, 'button1.png').setScale(0.75);
 ```
 
-Asset keys come from `src/common/assets.js` (`BACKGROUND`, `JAR`, `OBJECTS`). The key in `load` must match `add.image`.
-
-- Omit the atlas frame → Phaser uses the first frame.
-- `.setScale(0.75)` shrinks; `1` = original; `2` = double.
-
-**Checkpoint:** Background fills the view; jar at bottom center; a candy in the middle.
+**Checkpoint:** Background, jar at bottom center, scaled candy in the middle.
 
 ---
 
 ## 3. Player movement with the keyboard
 
-### Goal
-
-Move the jar with ← / →, stay on screen, use delta time.
+**Tag:** `2-player-movement` · **Goal:** Move jar with ←/→; clamp to screen; use delta time.
 
 ### Add fields on the class
 
 ```js
-/** @type {Phaser.Types.Input.Keyboard.CursorKeys} */
+/** @type {Phaser.Types.Input.Keyboard.CursorKeys} handles player input */
 #cursorKeys;
-/** @type {Phaser.GameObjects.Image} */
+/** @type {Phaser.GameObjects.Image} the player (jar) in our game */
 #player;
-/** @type {number} pixels per second */
+/** @type {number} how fast our player can move in our game */
 #playerSpeed;
 ```
 
-### Add `init()` — reset speed each scene start
+### Add `init()`
 
 ```js
 init() {
@@ -180,58 +147,60 @@ init() {
 }
 ```
 
-### In `create()` — keep a player ref + cursor keys
+### In `create()` — new / changed lines
 
-Change the jar line to store it, then set up input:
+```js
+if (!this.input) {
+  console.warn('Input plugin is not available');
+  return;
+}
+```
 
 ```js
 this.#player = this.add.image(width / 2, height, ASSET_KEYS.JAR);
+```
+
+```js
 this.#cursorKeys = this.input.keyboard.createCursorKeys();
 ```
 
-(You can remove the temporary centered candy from lesson 2.)
+(Keep the temporary candy line for now; lesson 4 removes it.)
 
-### Add `update(time, delta)` — move + clamp
+### Add `update(time, delta)`
 
 ```js
 update(time, delta) {
   const moveStep = this.#playerSpeed * (delta / 1000);
-
   if (this.#cursorKeys.left.isDown) {
     this.#player.x -= moveStep;
   } else if (this.#cursorKeys.right.isDown) {
     this.#player.x += moveStep;
   }
 
-  const halfW = this.#player.displayWidth / 2;
-  if (this.#player.x - halfW < 0) {
-    this.#player.x = halfW;
-  } else if (this.#player.x + halfW > this.scale.width) {
-    this.#player.x = this.scale.width - halfW;
+  if (this.#player.x - this.#player.displayWidth / 2 < 0) {
+    this.#player.x = this.#player.displayWidth / 2;
+  } else if (this.#player.x + this.#player.displayWidth / 2 > this.scale.width) {
+    this.#player.x = this.scale.width - this.#player.displayWidth / 2;
   }
 }
 ```
 
-Clamp with half width because position is the **center** of the jar.
-
-**Checkpoint:** Smooth left/right movement; jar stays on screen.
+**Checkpoint:** Smooth left/right movement; jar stays fully on screen.
 
 ---
 
 ## 4. Spawning falling objects
 
-### Goal
-
-Spawn on a timer, track in an array, fall downward, clean up off-screen.
+**Tag:** `3-falling-objects` · **Goal:** Timer spawn, array state, fall, off-screen cleanup.
 
 ### Add fields
 
 ```js
-/** @type {Phaser.GameObjects.Image[]} */
+/** @type {Phaser.GameObjects.Image[]} the falling objects for the player to collect */
 #fallingObjects;
-/** @type {string[]} */
+/** @type {string[]} the list of frames from the falling object spritesheet that we loaded in */
 #fallingObjectFrames;
-/** @type {number} */
+/** @type {number} how fast the objects will fall */
 #fallingObjectsSpeed;
 ```
 
@@ -241,18 +210,27 @@ Spawn on a timer, track in an array, fall downward, clean up off-screen.
 this.#fallingObjectsSpeed = 200;
 ```
 
-### In `create()` — draw jar in front, then set up spawn state
+### In `create()` — change player line
 
 ```js
 this.#player = this.add.image(width / 2, height, ASSET_KEYS.JAR).setDepth(1);
 ```
 
+### In `create()` — remove the static candy line
+
+Delete:
+
+```js
+this.add.image(width / 2, height / 2, ASSET_KEYS.OBJECTS, 'button1.png').setScale(0.75);
+```
+
+### In `create()` — after cursor keys, add
+
 ```js
 this.#fallingObjects = [];
-
-this.#fallingObjectFrames = Object.keys(
-  this.textures.get(ASSET_KEYS.OBJECTS).frames,
-).filter((name) => name !== '__BASE');
+this.#fallingObjectFrames = Object.keys(this.textures.get(ASSET_KEYS.OBJECTS).frames).filter(
+  (name) => name !== '__BASE',
+);
 
 this.time.addEvent({
   delay: 1000,
@@ -262,24 +240,7 @@ this.time.addEvent({
 });
 ```
 
-### Add method — spawn one candy
-
-```js
-#spawnFallingObject() {
-  const randomFrame = Phaser.Utils.Array.GetRandom(this.#fallingObjectFrames);
-  const x = Phaser.Math.RND.between(50, this.scale.width - 50);
-
-  const obj = this.add
-    .image(x, 0, ASSET_KEYS.OBJECTS, randomFrame)
-    .setScale(0.75);
-
-  this.#fallingObjects.push(obj);
-}
-```
-
-### In `update()` — after player movement, fall + cleanup
-
-Loop **backwards** so `splice` is safe:
+### In `update()` — after player clamp, add
 
 ```js
 for (let i = this.#fallingObjects.length - 1; i >= 0; i--) {
@@ -293,63 +254,52 @@ for (let i = this.#fallingObjects.length - 1; i >= 0; i--) {
 }
 ```
 
-**Checkpoint:** Candies spawn every second, fall, and leave without the array growing forever.
+### Add method
+
+```js
+#spawnFallingObject() {
+  const randomFrame = Phaser.Utils.Array.GetRandom(this.#fallingObjectFrames);
+  const obj = this.add
+    .image(Phaser.Math.RND.between(50, this.scale.width - 50), 0, ASSET_KEYS.OBJECTS, randomFrame)
+    .setScale(0.75);
+  this.#fallingObjects.push(obj);
+}
+```
+
+**Checkpoint:** Candies spawn every second, fall, and clean up off-screen.
 
 ---
 
 ## 5. Collision detection (no physics)
 
-### Goal
+**Tag:** `4-collisions` · **Goal:** Catch when jar and candy rectangles overlap.
 
-When candy overlaps jar, catch it (destroy + remove from array).
-
-### Idea
+### In the falling-object loop — after `obj.y += …`, before the off-screen check
 
 ```js
 const overlapPoints = Phaser.Geom.Intersects.GetRectangleToRectangle(
   this.#player.getBounds(),
   obj.getBounds(),
 );
-
-if (overlapPoints.length > 0) {
-  // overlapping
-}
-```
-
-### In the falling-object loop — after `obj.y += …`, before off-screen check
-
-```js
-const overlapPoints = Phaser.Geom.Intersects.GetRectangleToRectangle(
-  this.#player.getBounds(),
-  obj.getBounds(),
-);
-
 if (overlapPoints.length > 0) {
   obj.destroy();
   this.#fallingObjects.splice(i, 1);
-  console.log('Caught item');
-  continue;
+  console.log('caught item');
 }
 ```
 
-`continue` skips the miss / off-screen branch for that object.
-
-**Checkpoint:** Catch removes the candy; misses still fall off and clean up.
+**Checkpoint:** Overlap logs `caught item` and removes the candy.
 
 ---
 
-## 6. Score & UI text
+## 6. Scoring & UI text
 
-### Goal
-
-Score is **state**; text only mirrors it.
+**Tag:** `5-score` · **Goal:** Score state + on-screen text; update on catch.
 
 ### Add fields
 
 ```js
-/** @type {number} */
 #score;
-/** @type {Phaser.GameObjects.Text} */
 #scoreTextGameObject;
 ```
 
@@ -359,7 +309,42 @@ Score is **state**; text only mirrors it.
 this.#score = 0;
 ```
 
-### At module top (outside the class) — shared style
+### At end of `create()` — add HUD
+
+```js
+const textConfig = {
+  fontSize: '40px',
+  color: '#043D8C',
+  stroke: '#ffffff',
+  strokeThickness: 6,
+};
+const scoreTextPrefix = this.add.text(10, 10, 'Score:', textConfig);
+this.#scoreTextGameObject = this.add.text(
+  scoreTextPrefix.x + scoreTextPrefix.width,
+  scoreTextPrefix.y,
+  `${this.#score}`,
+  textConfig,
+);
+```
+
+### On catch — replace `console.log('caught item')` with
+
+```js
+this.#score += 10;
+this.#scoreTextGameObject.setText(`${this.#score}`);
+```
+
+**Checkpoint:** Each catch adds 10 and updates the score text.
+
+---
+
+## 7. Misses, game over & restart
+
+**Tag:** `6-game-over` · **Goal:** Lives, stop on 3 misses, Game Over, click to restart.
+
+### Move `textConfig` to module scope (above the class)
+
+Cut it out of `create()` and place:
 
 ```js
 const textConfig = {
@@ -370,47 +355,18 @@ const textConfig = {
 };
 ```
 
-### At end of `create()` — score HUD
-
-```js
-const scoreTextPrefix = this.add.text(10, 10, 'Score:', textConfig);
-this.#scoreTextGameObject = this.add.text(
-  scoreTextPrefix.x + scoreTextPrefix.width,
-  scoreTextPrefix.y,
-  `${this.#score}`,
-  textConfig,
-);
-```
-
-### On catch — replace the `console.log`
-
-```js
-this.#score += 10;
-this.#scoreTextGameObject.setText(`${this.#score}`);
-```
-
-**Checkpoint:** Each catch adds 10; the on-screen number updates.
-
----
-
-## 7. Misses, game over & restart
-
-### Goal
-
-Three misses → stop play, show Game Over, click to restart.
-
 ### Add fields
 
 ```js
-/** @type {number} */
+/** @type {number} how many times the player has missed collecting the falling objects */
 #misses;
-/** @type {number} */
+/** @type {number} how many misses before the game ends */
 #maxMisses;
-/** @type {boolean} */
+/** @type {boolean} tracks if the game over */
 #isGameOver;
-/** @type {Phaser.Time.TimerEvent} */
+/** @type {Phaser.Time.TimerEvent} timer for spawning objects in the game */
 #timerEvent;
-/** @type {Phaser.GameObjects.Text} */
+/** @type {Phaser.GameObjects.Text} the visual representation of the players lives */
 #livesTextGameObject;
 ```
 
@@ -422,15 +378,18 @@ this.#maxMisses = 3;
 this.#isGameOver = false;
 ```
 
-### In `create()` — store the timer (change the existing `addEvent` call)
+### In `create()` — store the timer
+
+Change:
+
+```js
+this.time.addEvent({
+```
+
+to:
 
 ```js
 this.#timerEvent = this.time.addEvent({
-  delay: 1000,
-  callback: this.#spawnFallingObject,
-  callbackScope: this,
-  loop: true,
-});
 ```
 
 ### At end of `create()` — lives HUD
@@ -445,7 +404,7 @@ this.#livesTextGameObject = this.add.text(
 );
 ```
 
-### At start of `update()` — bail when over
+### At start of `update()` — early return
 
 ```js
 if (this.#isGameOver) {
@@ -453,14 +412,20 @@ if (this.#isGameOver) {
 }
 ```
 
-### When an object falls off-screen — count a miss
+### On catch — after updating score, add
+
+```js
+continue;
+```
+
+### On off-screen miss — after destroy/splice, add
 
 ```js
 this.#misses += 1;
 this.#livesTextGameObject.setText(`${this.#maxMisses - this.#misses}`);
 ```
 
-### After the falling-object loop — check game over
+### After the falling-object loop — add
 
 ```js
 if (this.#misses >= this.#maxMisses) {
@@ -468,68 +433,60 @@ if (this.#misses >= this.#maxMisses) {
 }
 ```
 
-### Add method — game over + click to restart
-
-Text defaults to top-left origin; `setOrigin(0.5)` centers it.
+### Add method
 
 ```js
 #handleGameOver() {
   this.#isGameOver = true;
   this.#timerEvent.remove();
-
   this.add
     .text(this.scale.width / 2, this.scale.height / 2, 'Game Over', textConfig)
     .setOrigin(0.5);
-
   this.input.once(Phaser.Input.Events.POINTER_DOWN, () => {
     this.scene.restart();
   });
 }
 ```
 
-**Checkpoint:** Three misses stop movement/spawning and show Game Over; click resets everything.
+**Checkpoint:** Three misses → Game Over, no movement/spawns; click restarts cleanly.
 
 ---
 
 ## 8. Where to go next
 
-| System | What you built |
-|--------|----------------|
-| Scenes | Preload → Game |
-| Game loop | `update` every frame |
-| Input | Cursor keys |
-| Dynamic objects | Timer + array |
-| Collision | Rectangle overlap |
-| State + UI | Score / lives |
-| Rules | Miss limit + restart |
+You built: scenes, update loop, keyboard input, dynamic spawning, rectangle collisions, score/lives, game over + restart.
 
-Ideas: rising difficulty, good/bad item types, SFX, title scene, particles.
-
-Next Phaser topics: physics, tilemaps, sprite animations, cameras, particles.
+Ideas: rising difficulty, item types, SFX, title scene, particles.  
+Next Phaser topics: physics, tilemaps, animations, cameras.
 
 ---
 
 ## 9. Updating Phaser
 
-This starter uses local files under `assets/js/`, not npm.
+**Tag:** `phaser-ver-4.1.0`
 
-1. Replace `assets/js/phaser.js` and `assets/js/phaser.min.js` from the [Phaser release](https://github.com/phaserjs/phaser).
-2. Replace `src/types/phaser.d.ts` for updated IntelliSense.
-3. Refresh and check the console banner.
+This project uses local CDN copies, not npm. Replace:
 
-If you use npm elsewhere, Phaser 4 often needs `import * as Phaser from 'phaser'` instead of a default import. This course project doesn’t.
+1. `assets/js/phaser.js`
+2. `assets/js/phaser.min.js`
+3. `src/types/phaser.d.ts` (for IntelliSense)
+
+Then refresh and check the console banner. The repo `scripts/` folder can automate this — see the project README.
+
+If you use npm elsewhere: `import * as Phaser from 'phaser'` (wildcard), not a default import.
 
 ---
 
-## Controls & playtest checklist
+## Playtest checklist
 
 | Action | Expected |
 |--------|----------|
-| ← / → | Jar moves smoothly, stays on screen |
-| Candy spawns | ~once/sec, random X / frame |
-| Catch | Candy gone, score +10 |
-| Miss | Lives decrease |
-| 3 misses | Game Over; no move/spawn |
-| Click | Restart; score/lives reset |
+| ← / → | Jar moves; stays on screen |
+| Spawns | ~1/sec, random X / frame |
+| Catch | Candy gone; score +10 |
+| Miss | Lives −1 |
+| 3 misses | Game Over; stopped |
+| Click | Restart; state reset |
 
-Enjoy building — change numbers, break things, add weird ideas.
+Compare your file anytime against the matching tag, e.g.  
+`git show 6-game-over:src/scenes/game-scene.js`
