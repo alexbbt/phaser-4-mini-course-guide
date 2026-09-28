@@ -61,9 +61,7 @@ Code matches official tags on [phaser-4-falling-objects-game](https://github.com
 
 ### Why this lesson
 
-- Phaser is JS structure for games (render, input, assets, loop) — you still write JavaScript.
-- Confusion usually comes from not knowing **when** code runs (`create` once vs `update` forever).
-- You’re building a catch game later; first you need a clear loop.
+Phaser doesn’t replace JavaScript — it gives you the pieces every browser game needs: a canvas, asset loading, input, and a game loop. Almost everything you write lives inside a **scene**, and beginner bugs usually come from putting code in the wrong lifecycle method. This lesson is just about seeing that loop run so later movement and collisions have a place to live.
 
 ### Steps
 
@@ -138,14 +136,7 @@ update() {
 
 ### Why this lesson
 
-| Idea | Meaning |
-|------|---------|
-| World origin | Top-left `(0, 0)` |
-| +X / +Y | Right / down |
-| Object origin | Default = **center** of the image |
-| Trap | `image(0, 0)` puts the *center* on the corner → you only see part of it |
-
-Games are numbers changing over time. Position is just `x` and `y`.
+Before anything can move, you need to know where “here” is. In Phaser (and most 2D engines), `(0, 0)` is the **top-left** of the screen: X grows to the right, Y grows downward. The other gotcha is **origin**: by default Phaser positions an image by its *center*, so placing something at `(0, 0)` parks the middle of the sprite on the corner and you only see a quarter of it. Once that clicks, centering with `width / 2` and `height / 2` feels obvious.
 
 ### Steps
 
@@ -182,10 +173,7 @@ this.add.image(width / 2, height / 2, ASSET_KEYS.OBJECTS, 'button1.png').setScal
 
 ### Why this lesson
 
-- Movement = change `x` every frame. Keyboard only decides *when* to change it.
-- **Poll** keys in `update` (every frame), don’t listen once in `create`.
-- `delta` = ms since last frame → `speed * delta / 1000` = pixels/second (frame-rate safe).
-- Clamp with `displayWidth / 2` because position is the **center**, not the left edge.
+Movement isn’t magic — it’s changing `x` (or `y`) a little bit every frame. The keyboard just tells you when to nudge those numbers. You check keys inside `update` because that method runs continuously; setting something up once in `create` isn’t enough while a key is held. We also scale by `delta` so a 120fps machine doesn’t move twice as fast as a 60fps one, and we clamp using half the jar’s width because position is the sprite’s center.
 
 ### Steps
 
@@ -267,12 +255,7 @@ update(time, delta) {
 
 ### Why this lesson
 
-- Games manage **collections** (enemies, bullets, pickups) — usually an array.
-- Array membership = “this object still matters.”
-- Timer event = “call this again every N ms” without blocking `update`.
-- Loop the array **backwards** when splicing so indices stay valid.
-- `destroy()` removes from Phaser; `splice` removes from your state — do both.
-- `setDepth(1)` on the jar so new candies don’t draw on top of the player.
+A single candy isn’t a game — you need many objects over time. The usual pattern is an **array** as game state: if it’s in the list, it still exists for gameplay. A Phaser timer calls your spawn function every second so you don’t hand-roll clocks in `update`. When something leaves play, call both `destroy()` (Phaser) and `splice` (your array), and loop the list backwards so removing items doesn’t skip the next one. Raising the jar’s `depth` keeps it drawn above newly spawned candies.
 
 ### Steps
 
@@ -369,11 +352,7 @@ for (let i = this.#fallingObjects.length - 1; i >= 0; i--) {
 
 ### Why this lesson
 
-- Collision ≈ “do these two shapes overlap?”
-- For beginners: axis-aligned **rectangles**.
-- `getBounds()` → `{ x, y, width, height }`.
-- Phaser’s intersect helper returns overlap points; `length > 0` means hit.
-- No physics engine yet **on purpose** — later engines do this same math under the hood.
+Up to now the jar and candies ignore each other. Collision detection sounds heavy, but the beginner version is a simple question: do these two rectangles overlap? Each game object can hand you a bounding box via `getBounds()`, and Phaser can compare those boxes for you. We’re skipping the physics engine on purpose — once you’ve done this with math, “arcade physics collided” won’t feel like a black box.
 
 ### Steps
 
@@ -404,13 +383,7 @@ if (overlapPoints.length > 0) {
 
 ### Why this lesson
 
-| Concept | Rule |
-|---------|------|
-| Score number | **Source of truth** (game state) |
-| Text object | **View only** — mirrors state |
-| Order | Change state first, then update UI |
-
-Splitting `"Score:"` and the number makes later localization / reuse easier.
+Catching works, but there’s no feedback yet. Keep a numeric `#score` as the **source of truth**, and treat on-screen text as a mirror of that number — never the other way around. When something is collected, bump the score first, then call `setText`. Splitting the `"Score:"` label from the value makes it easier to restyle or translate later without rewriting the number logic.
 
 ### Steps
 
@@ -467,12 +440,7 @@ this.#scoreTextGameObject.setText(`${this.#score}`);
 
 ### Why this lesson
 
-- Rules turn mechanics into a **game** (win/lose conditions).
-- Off-screen fall = a miss (you already destroy there).
-- `isGameOver` early-return freezes `update` logic.
-- You must **stop the timer** or objects keep spawning after “game over.”
-- `scene.restart()` re-runs `init`/`create` → clean slate.
-- Text objects default origin = top-left → use `setOrigin(0.5)` to center “Game Over.”
+Without a fail state, the loop never ends — and that doesn’t feel like a game. We’ll treat a candy falling past the bottom as a miss, end after three misses, and freeze gameplay with an `isGameOver` flag. Important detail: also stop the spawn timer, or new objects keep appearing after “Game Over.” Restarting the scene is the easy reset button — Phaser re-runs `init` and `create`, so score, lives, and arrays come back clean. Center the Game Over text with `setOrigin(0.5)` because text defaults to a top-left origin.
 
 ### Steps
 
@@ -591,6 +559,8 @@ if (this.#misses >= this.#maxMisses) {
 
 ## 8. What you learned / next
 
+You just built a complete playable loop in Phaser 4 — not a huge game, but the same systems most games reuse. The physics engine was skipped on purpose so collisions and state feel understandable first.
+
 ### Systems you built
 
 | System | Where |
@@ -623,7 +593,7 @@ Physics · tilemaps · sprite animation · cameras · particles
 
 ### Why it matters here
 
-This starter ships **local** Phaser files (CDN copies), not an npm install — so upgrading is file swap, not `npm update`.
+When Phaser 4 ships updates, people often break imports by treating this starter like an npm app. Here Phaser is loaded from **local CDN copies** under `assets/js/`, with a small `phaser.d.ts` for editor IntelliSense — so upgrading is a file swap (or the repo’s update script), not `npm update`.
 
 ### Steps
 
